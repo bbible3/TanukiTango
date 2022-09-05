@@ -24,6 +24,7 @@ def annotateTextFile(filePath, ignoreStopWords=True, visualize=False):
     #Create a Doc object from the text
     doc = nlp(text)
     nouns = []
+    propns = []
     entities = {}
     verbs = []
     lemmaPairs = {}
@@ -37,12 +38,14 @@ def annotateTextFile(filePath, ignoreStopWords=True, visualize=False):
         elif token.pos_ == "VERB":
             verbs.append(token.text)
             lemmaPairs[token.text] = token.lemma_
+        elif token.pos_ == "PROPN":
+            propns.append(token.text)
 
     #Extract Entities
     for ent in doc.ents:
         entities[ent.text] = {"label": ent.label_, "start": ent.start_char, "end": ent.end_char}
 
-    rval = {"nouns": nouns, "entities": entities, "verbs": verbs, "lemmaPairs": lemmaPairs}
+    rval = {"nouns": nouns, "entities": entities, "verbs": verbs, "lemmaPairs": lemmaPairs, "propns": propns}
 
     for key,val in rval.items():
         print(key + ": " + str(len(val)))
@@ -51,7 +54,7 @@ def annotateTextFile(filePath, ignoreStopWords=True, visualize=False):
         displacy.serve(doc, style=visualize)
     return rval
 
-rval = annotateTextFile("txt/test.txt")
+rval = annotateTextFile("video/demo-mp4/frames/txt/146.txt")
 
 # for entity in rval["entities"]:
 #     print("Named Entity:", entity)
@@ -59,5 +62,12 @@ rval = annotateTextFile("txt/test.txt")
 #     for key,val in rval["entities"][entity].items():
 #         print(key + ": " + str(val))
 
-for noun in rval["nouns"]:
-    print("Noun:", noun)
+# for noun in rval["nouns"]:
+#     print("Noun:", noun)
+
+# for lemmaPair in rval["lemmaPairs"]:
+#     print("Lemma Pair:", lemmaPair)
+#     print("Lemma:", rval["lemmaPairs"][lemmaPair])
+
+for propn in rval["propns"]:
+    print("Propn:", propn)

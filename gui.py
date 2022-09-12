@@ -1,10 +1,14 @@
+import operator
 import sys
 import os
 import time
+import asyncio
+
 from PyQt6.QtWidgets import QApplication, QLabel, QWidget
 from PyQt6.QtWidgets import QFileDialog, QHBoxLayout, QGridLayout, QTabWidget, QPushButton, QLineEdit, QProgressBar
 from vproc import TanukiVproc
 from ocr import TanukiOcr
+from nlp import TanukiNlp
 
 def loadDirectory(textbox):
     #Get the directory
@@ -94,6 +98,130 @@ def startOCR(textbox, statusLabel=None):
     QApplication.processEvents()
 
     TanukiOcr.processAll(directory, directory + "/txt/", ocrMode="none")
+def removeSpaces(textbox, statusLabel=None):
+    print("Removing spaces")
+    directory = textbox.text()
+    setTextTo = "Status: Removing spaces from " + str(TanukiVproc.countFrames(directory)) + " files..."
+    #Update the status label
+    if statusLabel:
+        statusLabel.setText(setTextTo)
+
+    #Force a refresh
+    QApplication.processEvents()
+
+    TanukiOcr.removeSpaces(directory + "/txt/")
+
+def getNLPFolder(textbox, statusLabel=None):
+    print("Getting NLP folder")
+    directory = QFileDialog.getExistingDirectory(window, 'Select Directory', textbox.text())
+    textbox.setText(directory)
+
+def startNLP(textbox, statusLabel=None):
+    print("Starting NLP")
+    tnlp = TanukiNlp()
+    directory = textbox.text()
+    setTextTo = "Status: NLPing " + str(TanukiVproc.countFrames(directory)) + " files..."
+    #Update the status label
+    if statusLabel:
+        statusLabel.setText(setTextTo)
+
+    #Force a refresh
+    QApplication.processEvents()
+
+    print(directory)
+    #Get a list of text files in the directory
+    text_files = tnlp.getTextFiles(directory)
+
+    for file in text_files:
+        just_filename = file.split(os.path.sep)[-1]
+        just_filename_no_ext = just_filename.split(".")[0]
+        write_name = just_filename_no_ext + ".tnk"
+        print("Writing to:", write_name)
+        res = tnlp.annotateTextFile(file)
+        tnlp.writeResult(write_name, res)
+
+def getTNKFolder_async(textbox, statusLabel=None, outputLabel=None):
+    dir_suc = getTNKFolder(textbox)
+    if dir_suc:
+        print("Got directory:", dir_suc)
+        processTNKFolder(textbox, dir_suc, statusLabel, outputLabel)
+    else:
+        print("No directory selected")
+    # #Update the status label when we have a directory
+    # if statusLabel:
+    #     statusLabel.setText("Status: Loading " + dir_suc)
+    # if len(dir_suc)>0:
+    #     processTNKFolder(textbox, dir_suc, statusLabel)
+
+def getTNKFolder(textbox, statusLabel=None):
+    print("Getting NLP folder")
+    #directory = QFileDialog.getExistingDirectory(window, 'Select Directory', textbox.text())
+    directory = QFileDialog(window)
+    result = directory.getExistingDirectory()
+    if result:
+        print("Got directory:", result)
+        directory = result
+    else:
+        print("No directory selected")
+        directory = ""
+    return directory
+
+def processTNKFolder(textbox, directory, statusLabel=None, outputLabel=None):
+    print("Processing TNK folder")
+    textbox.setText(directory)
+    #Get a list of the *.tnk files in the directory
+    tnlp = TanukiNlp()
+    tnk_files = tnlp.getTNKFiles(directory)
+    how_many = len(tnk_files) if True else 0
+    setTextTo = "Status: Found " + str(how_many) + " *.tnk files"
+    #Update the status label
+    if statusLabel:
+        statusLabel.setText(setTextTo)
+    
+    #Force a refresh
+    QApplication.processEvents()
+
+    rvals = tnlp.processTNKFiles(tnk_files, statusLabel)
+    result_str = ""
+    
+    counts = {}
+    values = {}
+    freq = {}
+    for rval in rvals:
+        for key in rval.keys():
+            print("Key:", key)
+            if key == "verb":
+                continue
+            if key not in counts:
+                counts[key] = 0
+                values[key] = []
+            for val in rval[key]:
+                counts[key] += 1
+                if key == "lemmaPair":
+                    values[key].append(val[1])
+                else:
+                    values[key].append(val)
+    
+    for key in counts.keys():
+        for val in values[key]:
+            if val not in freq:
+                freq[val] = 0
+            freq[val] += 1
+
+    print("Counts:", counts)
+    print("Sums to:", sum(counts.values()))
+    print("Freq Sums to:", len(freq.keys()))
+    dups = sum(counts.values()) - len(freq.keys())
+    print("We can infer that the number of duplicates is:", dups)
+
+    #Sort freq by value
+    freq_sorted = sorted(freq.items(), key=operator.itemgetter(1), reverse=True)
+    #Print the top 10
+    for i in range(10):
+        print(freq_sorted[i])
+        result_str += str(freq_sorted[i]) + "\n"
+    outputLabel.setText(result_str)
+    outputLabel.repaint()
 
 app = QApplication([])
 
@@ -173,6 +301,9 @@ tab2_status_label = QLabel('Status: Waiting...')
 tab2_start_ocr_button = QPushButton('Begin OCR')
 tab2_start_ocr_button.clicked.connect(lambda: startOCR(tab2_textbox, statusLabel=tab2_status_label))
 
+tab2_remove_spaces_button = QPushButton('Remove Spaces')
+tab2_remove_spaces_button.clicked.connect(lambda: removeSpaces(tab2_textbox, statusLabel=tab2_status_label))
+
 
 
 #Add label to the layout
@@ -187,6 +318,8 @@ tab2_layout.addWidget(tab2_button, 2, 1)
 tab2_layout.addWidget(tab2_status_label, 3, 0)
 #Add start button to the layout
 tab2_layout.addWidget(tab2_start_ocr_button, 4, 0)
+#Add remove spaces button to the layout
+tab2_layout.addWidget(tab2_remove_spaces_button, 5, 0)
 
 
 #Tab 3
@@ -202,12 +335,50 @@ tab3_layout.addWidget(tab3_label, 0, 0)
 #Add the label2 to the layout
 tab3_layout.addWidget(tab3_label2, 1, 0)
 
+tab3_textbox = QLineEdit('')
+tab3_button = QPushButton('Select Folder')
+tab3_button.clicked.connect(lambda: getNLPFolder(tab3_textbox, statusLabel=tab3_status_label))
+tab3_status_label = QLabel('Status: Waiting...')
+tab3_start_nlp_button = QPushButton('Process folder...')
+tab3_start_nlp_button.clicked.connect(lambda: startNLP(tab3_textbox, statusLabel=tab3_status_label))
+
+tab3_layout.addWidget(tab3_textbox, 2, 0)
+tab3_layout.addWidget(tab3_button, 2, 1)
+tab3_layout.addWidget(tab3_status_label, 3, 0)
+tab3_layout.addWidget(tab3_start_nlp_button, 4, 0)
+
+#Tab 4
+tab4 = QWidget()
+tab4_layout = QGridLayout()
+tab4.setLayout(tab4_layout)
+tab4_label = QLabel('<h1>*.tnk explorer</h1>')
+tab4_label2 = QLabel('<h2>Load processed vocabulary files</h2>')
+tab4_tabtext = "*.tnk Explorer"
+
+tab4_textbox = QLineEdit('')
+tab4_button = QPushButton('Select Folder')
+tab4_button.clicked.connect(lambda: getTNKFolder_async(tab4_textbox, statusLabel=tab4_status_label, outputLabel=tab4_results_label))
+tab4_status_label = QLabel('Status: Waiting...')
+tab4_results_label = QLabel('')
+#Add the label to the layout
+tab4_layout.addWidget(tab4_label, 0, 0)
+#Add the label2 to the layout
+tab4_layout.addWidget(tab4_label2, 1, 0)
+#Add the textbox to the layout
+tab4_layout.addWidget(tab4_textbox, 2, 0)
+#Add the button to the layout
+tab4_layout.addWidget(tab4_button, 2, 1)
+#Add the status label to the layout
+tab4_layout.addWidget(tab4_status_label, 3, 0)
+tab4_layout.addWidget(tab4_results_label, 4, 0)
+
 
 #Add the tabs
 tabwidget = QTabWidget()
 tabwidget.addTab(tab1, tab1_tabtext)
 tabwidget.addTab(tab2, tab2_tabtext)
 tabwidget.addTab(tab3, tab3_tabtext)
+tabwidget.addTab(tab4, tab4_tabtext)
 
 layout.addWidget(tabwidget, 0,0)
 

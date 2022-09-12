@@ -172,7 +172,6 @@ tab2_button.clicked.connect(lambda: getOCRFolder(tab2_textbox, statusLabel=tab2_
 tab2_status_label = QLabel('Status: Waiting...')
 tab2_start_ocr_button = QPushButton('Begin OCR')
 tab2_start_ocr_button.clicked.connect(lambda: startOCR(tab2_textbox, statusLabel=tab2_status_label))
-tab3_label = QLabel('<h1>Tab 3</h1>')
 
 
 
@@ -190,12 +189,26 @@ tab2_layout.addWidget(tab2_status_label, 3, 0)
 tab2_layout.addWidget(tab2_start_ocr_button, 4, 0)
 
 
+#Tab 3
+tab3 = QWidget()
+tab3_layout = QGridLayout()
+tab3.setLayout(tab3_layout)
+tab3_label = QLabel('<h1>Language Processing</h1>')
+tab3_label2 = QLabel('<h2>Process extracted vocab</h2>')
+tab3_tabtext = "Language Processing"
+
+#Add the label to the layout
+tab3_layout.addWidget(tab3_label, 0, 0)
+#Add the label2 to the layout
+tab3_layout.addWidget(tab3_label2, 1, 0)
+
 
 #Add the tabs
 tabwidget = QTabWidget()
 tabwidget.addTab(tab1, tab1_tabtext)
 tabwidget.addTab(tab2, tab2_tabtext)
-tabwidget.addTab(tab3_label, 'Tab 3')
+tabwidget.addTab(tab3, tab3_tabtext)
+
 layout.addWidget(tabwidget, 0,0)
 
 #A file select dialog

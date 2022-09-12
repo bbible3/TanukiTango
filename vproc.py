@@ -64,7 +64,10 @@ class TanukiVproc:
         #Save the image
         cv2.imwrite(imgLoc, img)
         return img
-
+    def curDir():
+        return os.path.dirname(os.path.realpath(__file__))
+    def countFrames(directory):
+        return len(os.listdir(directory))
 #Extract all frames from a video
 #extractAllFrames("video/demo.mp4", "video/demo-mp4/frames/")
 #Process all of the frames to get their differences, remove them if they are deemed identical

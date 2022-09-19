@@ -8,9 +8,21 @@ import pysrt
 import operator
 import csv
 from se import TanukiSubtitlerVals
-
+from enum import Enum
+from namedetection import TanukiNamer
 class TanukiSubtitler:
-    def __init__(self, genki_filename="res/genki-vocab.json", dictionary_filename="./res/jmdict_english.zip", subtitle_files="./subtitles", save_as="gen/Generated_Subtitles.csv", select_range=10, max_definitions=3, max_sub_defs=3):
+    #An enum to store filter types
+
+    class FilterType(Enum):
+        INCLUDE_ALL = 1
+        EXCLUDE_GENKI = 2
+        INCLUDE_ONLY_GENKI = 3
+    class NameMode(Enum):
+        NO_NAMES = 1
+        NAMES = 2
+        NAMES_STRONG = 3
+
+    def __init__(self, genki_filename="res/genki-vocab.json", dictionary_filename="./res/jmdict_english.zip", subtitle_files="./subtitles", save_as="gen/Generated_Subtitles.csv", select_range=10, max_definitions=3, max_sub_defs=3, exclusion_type=FilterType.INCLUDE_ALL, name_mode=NameMode.NO_NAMES):
         
         self.genki_filename = genki_filename
         try:
@@ -27,10 +39,19 @@ class TanukiSubtitler:
         self.max_definitions = max_definitions
         self.max_sub_defs = max_sub_defs
         self.save_as = save_as
+        self.exclusion_type = exclusion_type
+        self.name_mode = name_mode
+        self.found_names = {}
         #is save_as the default?
         if save_as == "gen/Generated_Subtitles.csv":
             self.save_as = os.path.join(os.path.dirname(os.path.realpath(__file__)), save_as)
 
+        if self.exclusion_type == TanukiSubtitler.FilterType.INCLUDE_ALL:
+            self.should_we_filter = False
+        if self.exclusion_type == TanukiSubtitler.FilterType.EXCLUDE_GENKI:
+            self.should_we_reverse_filter = True
+        if self.exclusion_type == TanukiSubtitler.FilterType.INCLUDE_ONLY_GENKI:
+            self.should_we_filter = True
         # Is subtitle_files an array of strings or one string?
         if isinstance(subtitle_files, list):
             self.subtitle_files = subtitle_files
@@ -80,7 +101,7 @@ class TanukiSubtitler:
                     line_index += 1
         print(f"Lines read: {dlinect}")
         print(f"Ignored lines: {ignored}")
-
+        
         # Begin tokenizing
         print("Tokenizing...")
         subs = pysrt.open(filename)
@@ -142,10 +163,9 @@ class TanukiSubtitler:
         o_adv = []
 
         
-        should_we_filter = True
-        should_we_reverse_filter = True
+ 
 
-        overlap_genki = should_we_filter
+        overlap_genki = self.should_we_filter
 
         genki_kanji = []
         for i in self.genki_json:
@@ -165,7 +185,7 @@ class TanukiSubtitler:
                 if item in genki_kanji:
                     o_adv.append(item)
         else:
-            if should_we_reverse_filter:
+            if self.should_we_reverse_filter:
                 for item in verbs:
                     if item not in genki_kanji:
                         o_verbs.append(item)
@@ -303,8 +323,39 @@ class TanukiSubtitler:
             writer = csv.writer(gs)
             writer.writerows(rows)
             print("Saved to " + self.save_as)
+        if self.name_mode == TanukiSubtitler.NameMode.NAMES or TanukiSubtitler.NameMode.NAMES_STRONG:
+            print("Generating names...")
+            unknown_name = "Name With Unknown Reading"
+            namer = TanukiNamer(maybe_names_preprocessing, word_freq=word_freq, allow_unlikely_names=self.name_mode == TanukiSubtitler.NameMode.NAMES_STRONG)
+            if namer.process():
+                self.found_names = namer.names_sorted
+                #Filter self.found_names to exclude genki words
+                if self.name_mode == TanukiSubtitler.NameMode.NAMES:
+                    self.found_names = [x for x in self.found_names if x[0] not in genki_kanji]
+                    #How many did we strip?
+                    print("Stripped " + str(len(namer.names_sorted) - len(self.found_names)) + " names from the list.")
+            print(self.found_names)
+            print("Found " + str(len(self.found_names)) + " names")
+            names_rows = []
+            #Append them
+            for name in sorted(self.found_names,key=self.getkey, reverse=True):
+                try:
+                    names_rows.append([name[0], "Name -- " + name[1] + "(" + str(name[2]) + " appearances)"])
+                except:
+                    #Skipping failed name, continue
+                    continue
+            with open(self.save_as, 'w+', encoding='utf8') as gs:
+                writer = csv.writer(gs)
+                writer.writerows(names_rows)
+                print("Saved names to " + self.save_as)
 
-    def flip_dic_list(wd):
+            
+        
+
+    def getkey(self,item):
+        return item[2]
+
+    def flip_dic_list(self,wd):
         temp = []
         for i in reversed(range(0,len(wd))):
             temp.append(wd[i])
@@ -348,4 +399,4 @@ class TanukiSubtitler:
 
 #Cwd:
 
-tester = TanukiSubtitler(subtitle_files="./subtitles/kanokari/")
+tester = TanukiSubtitler(subtitle_files="./subtitles/kanokari/", exclusion_type=TanukiSubtitler.FilterType.INCLUDE_ONLY_GENKI, name_mode=TanukiSubtitler.NameMode.NAMES)

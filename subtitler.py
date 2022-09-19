@@ -22,7 +22,7 @@ class TanukiSubtitler:
         NAMES = 2
         NAMES_STRONG = 3
 
-    def __init__(self, genki_filename="res/genki-vocab.json", dictionary_filename="./res/jmdict_english.zip", subtitle_files="./subtitles", save_as="gen/Generated_Subtitles.csv", select_range=10, max_definitions=3, max_sub_defs=3, exclusion_type=FilterType.INCLUDE_ALL, name_mode=NameMode.NO_NAMES):
+    def __init__(self, genki_filename="res/genki-vocab.json", dictionary_filename="res/jmdict_english.zip", subtitle_files="./subtitles", save_as="gen/Generated_Subtitles.csv", select_range=10, max_definitions=3, max_sub_defs=3, exclusion_type=FilterType.INCLUDE_ALL, name_mode=NameMode.NO_NAMES):
         
         self.genki_filename = genki_filename
         try:
@@ -42,9 +42,14 @@ class TanukiSubtitler:
         self.exclusion_type = exclusion_type
         self.name_mode = name_mode
         self.found_names = {}
+        self.should_we_reverse_filter = False
         #is save_as the default?
         if save_as == "gen/Generated_Subtitles.csv":
             self.save_as = os.path.join(os.path.dirname(os.path.realpath(__file__)), save_as)
+        if genki_filename == "res/genki-vocab.json":
+            self.genki_filename = os.path.join(os.path.dirname(os.path.realpath(__file__)), genki_filename)
+        if dictionary_filename == "res/jmdict_english.zip":
+            self.dictionary_filename = os.path.join(os.path.dirname(os.path.realpath(__file__)), dictionary_filename)
 
         if self.exclusion_type == TanukiSubtitler.FilterType.INCLUDE_ALL:
             self.should_we_filter = False
@@ -323,7 +328,7 @@ class TanukiSubtitler:
             writer = csv.writer(gs)
             writer.writerows(rows)
             print("Saved to " + self.save_as)
-        if self.name_mode == TanukiSubtitler.NameMode.NAMES or TanukiSubtitler.NameMode.NAMES_STRONG:
+        if self.name_mode == TanukiSubtitler.NameMode.NAMES or self.name_mode == TanukiSubtitler.NameMode.NAMES_STRONG:
             print("Generating names...")
             unknown_name = "Name With Unknown Reading"
             namer = TanukiNamer(maybe_names_preprocessing, word_freq=word_freq, allow_unlikely_names=self.name_mode == TanukiSubtitler.NameMode.NAMES_STRONG)
@@ -344,7 +349,7 @@ class TanukiSubtitler:
                 except:
                     #Skipping failed name, continue
                     continue
-            with open(self.save_as, 'w+', encoding='utf8') as gs:
+            with open(self.save_as, 'a', encoding='utf8') as gs:
                 writer = csv.writer(gs)
                 writer.writerows(names_rows)
                 print("Saved names to " + self.save_as)
@@ -399,4 +404,4 @@ class TanukiSubtitler:
 
 #Cwd:
 
-tester = TanukiSubtitler(subtitle_files="./subtitles/kanokari/", exclusion_type=TanukiSubtitler.FilterType.INCLUDE_ONLY_GENKI, name_mode=TanukiSubtitler.NameMode.NAMES)
+#tester = TanukiSubtitler(subtitle_files="./subtitles/kanokari/", exclusion_type=TanukiSubtitler.FilterType.INCLUDE_ONLY_GENKI, name_mode=TanukiSubtitler.NameMode.NAMES)

@@ -89,5 +89,5 @@ class TanukiOcr:
                     pass
             print("Successfully wrote to file", txt)
     #loadImage("jptest.png", "txt/jptest.txt")
-    loadImage("kinmoza2.png", pathSave="kinmoza2.txt", ocrMode="manga-ocr")
+    #loadImage("kinmoza2.png", pathSave="kinmoza2.txt", ocrMode="manga-ocr")
 #TanukiOcr.processAll("video/demo-mp4/frames/", "video/demo-mp4/frames/txt/")

@@ -5,10 +5,15 @@ import time
 import asyncio
 
 from PyQt6.QtWidgets import QApplication, QLabel, QWidget
-from PyQt6.QtWidgets import QFileDialog, QHBoxLayout, QGridLayout, QTabWidget, QPushButton, QLineEdit, QProgressBar
+from PyQt6.QtWidgets import QFileDialog, QHBoxLayout, QGridLayout, QTabWidget, QPushButton, QLineEdit, QProgressBar, QComboBox
 from vproc import TanukiVproc
 from ocr import TanukiOcr
 from nlp import TanukiNlp
+from subtitler import TanukiSubtitler
+
+exclusion_type = TanukiSubtitler.FilterType.INCLUDE_ALL
+name_extraction = TanukiSubtitler.NameMode.NO_NAMES
+my_starting_dir = os.path.dirname(os.path.realpath(__file__))
 
 def loadDirectory(textbox):
     #Get the directory
@@ -223,6 +228,69 @@ def processTNKFolder(textbox, directory, statusLabel=None, outputLabel=None):
     outputLabel.setText(result_str)
     outputLabel.repaint()
 
+def getSubtitleFolder_async(textbox, statusLabel=None, outputLabel=None):
+    dir_suc = getSubtitleFolder(textbox)
+    if dir_suc:
+        print("Got directory:", dir_suc)
+        processSubtitleFolder(textbox, dir_suc, statusLabel, outputLabel)
+    else:
+        print("No directory selected")
+    # #Update the status label when we have a directory
+    # if statusLabel:
+    #     statusLabel.setText("Status: Loading " + dir_suc)
+    # if len(dir_suc)>0:
+    #     processTNKFolder(textbox, dir_suc, statusLabel)
+    #Has my cwd changed from when I started?
+
+def getSubtitleFolder(textbox, statusLabel=None):
+    print("Getting Subtitle folder")
+    #directory = QFileDialog.getExistingDirectory(window, 'Select Directory', textbox.text())
+    directory = QFileDialog(window)
+    result = directory.getExistingDirectory()
+    if result:
+        print("Got directory:", result)
+        directory = result
+    else:
+        print("No directory selected")
+        directory = ""
+    return directory
+def processSubtitleFolder(textbox, directory, statusLabel=None, outputLabel=None):
+    textbox.setText(directory)
+    print("Processing Subtitle folder")
+    outputLabel.setText("Subtitle folder loaded.")
+
+def updateExclusionType(tab_5_exclusion_dropndown):
+    exclusion_type = tab_5_exclusion_dropndown.currentText()
+    if exclusion_type == "Don\'t Filter":
+        exclusion_type = TanukiSubtitler.FilterType.INCLUDE_ALL
+    elif exclusion_type == "Only Include Genki Words":
+        exclusion_type = TanukiSubtitler.FilterType.INCLUDE_ONLY_GENKI
+    elif exclusion_type == "Exclude Genki Words":
+        exclusion_type = TanukiSubtitler.FilterType.EXCLUDE_GENKI
+    print("Exclusion type:", exclusion_type)
+
+def updateNameExtraction(tab_5_name_dropdown):
+    name_extraction = tab_5_name_dropdown.currentText()
+    if name_extraction == "Don\'t Extract Names":
+        name_extraction = TanukiSubtitler.NameMode.NO_NAMES
+    elif name_extraction == "Extract Names":
+        name_extraction = TanukiSubtitler.NameMode.NAMES
+    elif name_extraction == "Loose Extract Names":
+        name_extraction = TanukiSubtitler.NameMode.NAMES_STRONG
+    print("Name extraction:", name_extraction)
+
+
+def startSubtitleExtraction_async(tab_5_input_textbox, statusLabel=None, outputLabel=None):
+    if my_starting_dir is not os.path.dirname(os.path.realpath(__file__)):
+        print("My cwd has changed!")
+        os.chdir(my_starting_dir)
+    dir = tab_5_input_textbox.text()
+    if len(dir)>0:
+        startSubtitleExtraction(tab_5_input_textbox, statusLabel, outputLabel)
+
+def startSubtitleExtraction(tab_5_input_textbox, statusLabel=None, outputLabel=None):
+    subs = TanukiSubtitler(subtitle_files=tab_5_input_textbox.text(), exclusion_type=exclusion_type, name_mode=name_extraction)
+
 app = QApplication([])
 
 window = QWidget()
@@ -372,6 +440,50 @@ tab4_layout.addWidget(tab4_button, 2, 1)
 tab4_layout.addWidget(tab4_status_label, 3, 0)
 tab4_layout.addWidget(tab4_results_label, 4, 0)
 
+tab_5 = QWidget()
+tab_5_layout = QGridLayout()
+tab_5.setLayout(tab_5_layout)
+tab_5_label = QLabel('<h1>Subtitle Extractor</h1>')
+tab_5_label2 = QLabel('<h2>Extract vocabulary from *.srt subtitle files</h2>')
+tab_5_tabtext = "Subtitle Extractor"
+tab_5_status_label = QLabel('Status: Waiting...')
+tab_5_results_label = QLabel('')
+#The textbox and button to select the folder
+tab_5_textbox = QLineEdit('')
+tab_5_button = QPushButton('Select Folder')
+
+#A dropdown to select exclusion type
+tab_5_exclusion_dropdown_label = QLabel('Exclusion Type:')
+tab_5_exclusion_dropdown = QComboBox()
+tab_5_exclusion_dropdown.addItems(['Don\'t Filter', 'Only Include Genki Words', 'Exclude Genki Words'])
+tab_5_exclusion_dropdown.currentIndexChanged.connect(lambda: updateExclusionType(tab_5_exclusion_dropdown))
+
+#A dropdown to select name extraction
+tab_5_name_dropdown_label = QLabel('Name Extraction:')
+tab_5_name_dropdown = QComboBox()
+tab_5_name_dropdown.addItems(['Don\'t Extract Names', 'Extract Names', 'Loose Extract Names'])
+tab_5_name_dropdown.currentIndexChanged.connect(lambda: updateNameExtraction(tab_5_name_dropdown))
+
+tab_5_button.clicked.connect(lambda: getSubtitleFolder_async(tab_5_textbox, statusLabel=tab_5_status_label, outputLabel=tab_5_results_label))
+
+#A button to start the extraction
+tab_5_start_button = QPushButton('Start Extraction')
+tab_5_start_button.clicked.connect(lambda: startSubtitleExtraction_async(tab_5_textbox, statusLabel=tab_5_status_label, outputLabel=tab_5_results_label))
+
+tab_5_layout.addWidget(tab_5_label, 0, 0)
+tab_5_layout.addWidget(tab_5_label2, 1, 0)
+tab_5_layout.addWidget(tab_5_textbox, 2, 0)
+tab_5_layout.addWidget(tab_5_button, 2, 1)
+tab_5_layout.addWidget(tab_5_status_label, 3, 0)
+tab_5_layout.addWidget(tab_5_results_label, 4, 0)
+tab_5_layout.addWidget(tab_5_exclusion_dropdown_label, 5, 0)
+tab_5_layout.addWidget(tab_5_exclusion_dropdown, 5, 1)
+tab_5_layout.addWidget(tab_5_name_dropdown_label, 6, 0)
+tab_5_layout.addWidget(tab_5_name_dropdown, 6, 1)
+tab_5_layout.addWidget(tab_5_start_button, 7, 0)
+
+
+
 
 #Add the tabs
 tabwidget = QTabWidget()
@@ -379,6 +491,7 @@ tabwidget.addTab(tab1, tab1_tabtext)
 tabwidget.addTab(tab2, tab2_tabtext)
 tabwidget.addTab(tab3, tab3_tabtext)
 tabwidget.addTab(tab4, tab4_tabtext)
+tabwidget.addTab(tab_5, tab_5_tabtext)
 
 layout.addWidget(tabwidget, 0,0)
 

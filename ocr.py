@@ -20,7 +20,8 @@ class TanukiOcr:
             if not pathSave:
                 pathSave = filename + ".txt"
             fileStrOnly = filename.split('/')[-1]
-            pathSave = pathSave + "/" + fileStrOnly + ".txt"
+            if not pathSave:
+                pathSave = pathSave + "/" + fileStrOnly + ".txt"
             print("Saving to:", fileStrOnly)
             with open(pathSave, "w", encoding='utf-8') as f:
                 try:
@@ -88,4 +89,5 @@ class TanukiOcr:
                     pass
             print("Successfully wrote to file", txt)
     #loadImage("jptest.png", "txt/jptest.txt")
+    loadImage("kinmoza2.png", pathSave="kinmoza2.txt", ocrMode="manga-ocr")
 #TanukiOcr.processAll("video/demo-mp4/frames/", "video/demo-mp4/frames/txt/")

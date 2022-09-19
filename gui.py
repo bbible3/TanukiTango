@@ -278,18 +278,19 @@ def updateNameExtraction(tab_5_name_dropdown):
     elif name_extraction == "Loose Extract Names":
         name_extraction = TanukiSubtitler.NameMode.NAMES_STRONG
     print("Name extraction:", name_extraction)
+    return name_extraction
 
 
-def startSubtitleExtraction_async(tab_5_input_textbox, statusLabel=None, outputLabel=None):
+def startSubtitleExtraction_async(tab_5_input_textbox, statusLabel=None, outputLabel=None, nameModeDropdown=None):
     if my_starting_dir is not os.path.dirname(os.path.realpath(__file__)):
         print("My cwd has changed!")
         os.chdir(my_starting_dir)
     dir = tab_5_input_textbox.text()
     if len(dir)>0:
-        startSubtitleExtraction(tab_5_input_textbox, statusLabel, outputLabel)
+        startSubtitleExtraction(tab_5_input_textbox, statusLabel, outputLabel, nameModeDropdown=nameModeDropdown)
 
-def startSubtitleExtraction(tab_5_input_textbox, statusLabel=None, outputLabel=None):
-    subs = TanukiSubtitler(subtitle_files=tab_5_input_textbox.text(), exclusion_type=exclusion_type, name_mode=name_extraction)
+def startSubtitleExtraction(tab_5_input_textbox, statusLabel=None, outputLabel=None, nameModeDropdown=None):
+    subs = TanukiSubtitler(subtitle_files=tab_5_input_textbox.text(), exclusion_type=exclusion_type, name_mode=updateNameExtraction(nameModeDropdown))
 
 app = QApplication([])
 
@@ -468,7 +469,7 @@ tab_5_button.clicked.connect(lambda: getSubtitleFolder_async(tab_5_textbox, stat
 
 #A button to start the extraction
 tab_5_start_button = QPushButton('Start Extraction')
-tab_5_start_button.clicked.connect(lambda: startSubtitleExtraction_async(tab_5_textbox, statusLabel=tab_5_status_label, outputLabel=tab_5_results_label))
+tab_5_start_button.clicked.connect(lambda: startSubtitleExtraction_async(tab_5_textbox, statusLabel=tab_5_status_label, outputLabel=tab_5_results_label, nameModeDropdown=tab_5_name_dropdown))
 
 tab_5_layout.addWidget(tab_5_label, 0, 0)
 tab_5_layout.addWidget(tab_5_label2, 1, 0)

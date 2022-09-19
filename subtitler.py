@@ -175,7 +175,7 @@ class TanukiSubtitler:
         genki_kanji = []
         for i in self.genki_json:
             genki_kanji.append(i['Kanji'])
-            print(i['Kanji'])
+            #print(i['Kanji'])
         if overlap_genki:
             for item in verbs:
                 if item in genki_kanji:
@@ -353,6 +353,8 @@ class TanukiSubtitler:
                 writer = csv.writer(gs)
                 writer.writerows(names_rows)
                 print("Saved names to " + self.save_as)
+        else:
+            print("Skipping names", self.name_mode)
 
             
         

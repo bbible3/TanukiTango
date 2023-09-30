@@ -4,14 +4,30 @@ import argparse
 import cv2
 import os
 from manga_ocr import MangaOcr
+import config
+from config import TanukiTangoConfig
 
 class TanukiOcr:
 
+    
+    config = TanukiTangoConfig()
 
     pytesseract.pytesseract.tesseract_cmd = r'C:\Program Files\Tesseract-OCR\tesseract.exe'
+    if config.tesseract_executable:
+        pytesseract.pytesseract.tesseract_cmd = config.tesseract_executable
+    
 
-
+    #Manually set --tessdata-dir 
+    pytesseract.pytesseract.tessdata_dir_config = r'--tessdata-dir "C:\Program Files\Tesseract-OCR\tessdata"'
+    
     def loadImage(path, pathSave=None, ocrMode="none"):
+        config = TanukiTangoConfig()
+        whichMode = "jpn"
+        if config.language_mode:
+            whichMode = config.language_mode    
+
+        print("About to load image:", path)
+
         if ocrMode == "manga-ocr":
             #Load as manga ocr
             mocr = MangaOcr()
@@ -40,7 +56,7 @@ class TanukiOcr:
             gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
             filename = "{}.png".format(os.getpid())
             cv2.imwrite(filename, gray)
-            text = pytesseract.image_to_string(Image.open(filename), lang="jpn_vert")
+            text = pytesseract.image_to_string(Image.open(filename), lang=whichMode)
             os.remove(filename)
             # Get the filename of the imagefile without the extension
             filename = path.split(os.path.sep)[-1].split(".")[0]
@@ -91,3 +107,4 @@ class TanukiOcr:
     #loadImage("jptest.png", "txt/jptest.txt")
     #loadImage("kinmoza2.png", pathSave="kinmoza2.txt", ocrMode="manga-ocr")
 #TanukiOcr.processAll("video/demo-mp4/frames/", "video/demo-mp4/frames/txt/")
+#TanukiOcr.loadImage("video/mls-mp4/frames/230.png", "video/mls-mp4/frames/")

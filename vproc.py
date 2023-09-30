@@ -73,3 +73,5 @@ class TanukiVproc:
 #Process all of the frames to get their differences, remove them if they are deemed identical
 #processFrames("video/demo-mp4/frames/")
 #TanukiVproc.cropImage("video/demo-mp4/frames/104.png", 0.9)
+#TanukiVproc.extractAllFrames("video/mls.mp4", "video/mls-mp4/frames/")
+#TanukiVproc.processFrames("video/mls-mp4/frames/", 1.0, False)

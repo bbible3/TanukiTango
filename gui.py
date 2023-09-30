@@ -1,3 +1,4 @@
+import json
 import operator
 import sys
 import os
@@ -10,6 +11,8 @@ from vproc import TanukiVproc
 from ocr import TanukiOcr
 from nlp import TanukiNlp
 from subtitler import TanukiSubtitler
+
+import config
 
 exclusion_type = TanukiSubtitler.FilterType.INCLUDE_ALL
 name_extraction = TanukiSubtitler.NameMode.NO_NAMES
@@ -95,6 +98,7 @@ def startOCR(textbox, statusLabel=None):
     print("Starting OCR")
     directory = textbox.text()
     setTextTo = "Status: OCRing " + str(TanukiVproc.countFrames(directory)) + " frames..."
+    print(setTextTo)
     #Update the status label
     if statusLabel:
         statusLabel.setText(setTextTo)
@@ -292,6 +296,36 @@ def startSubtitleExtraction_async(tab_5_input_textbox, statusLabel=None, outputL
 def startSubtitleExtraction(tab_5_input_textbox, statusLabel=None, outputLabel=None, nameModeDropdown=None):
     subs = TanukiSubtitler(subtitle_files=tab_5_input_textbox.text(), exclusion_type=exclusion_type, name_mode=updateNameExtraction(nameModeDropdown))
 
+def getTesseractFolder(textbox, statusLabel=None):
+    print("Getting Executable")
+    #directory = QFileDialog.getExistingDirectory(window, 'Select Directory', textbox.text())
+    directory = QFileDialog(window)
+    #Get .exe file
+    result = directory.getOpenFileName(filter="Executable Files (*.exe)")
+    if result:
+        print("Got directory:", result)
+        directory = result[0]
+        return directory
+    else:
+        print("No directory selected")
+        directory = ""
+
+def processTesseractFolder(textbox, directory, config, statusLabel=None):
+    #Update the status label when we have a directory
+    config.tesseract_executable = directory
+    config.saveConfig()
+    return True
+
+def getTesseractFolder_async(textbox, config, statusLabel=None):
+    dir_suc = getTesseractFolder(textbox)
+    if dir_suc:
+        print("Got directory:", dir_suc)
+        processTesseractFolder(textbox, dir_suc, config, statusLabel)
+        textbox.setText(dir_suc)
+    else:
+        print("No directory selected")
+
+
 app = QApplication([])
 
 window = QWidget()
@@ -305,6 +339,9 @@ layout = QGridLayout()
 window.setLayout(layout)
 
 #Generate content for the tabs
+
+
+myConfig =config.TanukiTangoConfig()
 
 #Tab 1
 tab1 = QWidget()
@@ -441,6 +478,7 @@ tab4_layout.addWidget(tab4_button, 2, 1)
 tab4_layout.addWidget(tab4_status_label, 3, 0)
 tab4_layout.addWidget(tab4_results_label, 4, 0)
 
+#Tab 5
 tab_5 = QWidget()
 tab_5_layout = QGridLayout()
 tab_5.setLayout(tab_5_layout)
@@ -484,6 +522,50 @@ tab_5_layout.addWidget(tab_5_name_dropdown, 6, 1)
 tab_5_layout.addWidget(tab_5_start_button, 7, 0)
 
 
+#Tab 6: Config
+tab_6 = QWidget()
+tab_6_layout = QGridLayout()
+tab_6.setLayout(tab_6_layout)
+tab_6_label = QLabel('<h1>Config</h1>')
+tab_6_label2 = QLabel('<h2>Configure TanukiTango</h2>')
+tab_6_tabtext = "Config"
+#"Tesseract Executable" selector label
+tab_6_tesseract_label = QLabel('Tesseract Executable:')
+#The textbox and button to select the folder
+tab_6_tesseract_textbox = QLineEdit('')
+tab_6_tesseract_textbox.setText(myConfig.tesseract_executable)
+tab_6_tesseract_button = QPushButton('Select Folder')
+tab_6_tesseract_button.clicked.connect(lambda: getTesseractFolder_async(tab_6_tesseract_textbox, myConfig, statusLabel=tab_6_status_label))
+tab_6_status_label = QLabel('Status: Not selected...')
+if myConfig.tesseract_executable:
+    tab_6_status_label.setText("Status: " + myConfig.tesseract_executable)
+
+#Dropdown to select language_mode: either jpn or jpn_vert
+tab_6_language_mode_label = QLabel('Language Mode:')
+tab_6_language_mode_dropdown = QComboBox()
+tab_6_language_mode_dropdown.addItems(['Not set', 'jpn', 'jpn_vert'])
+tab_6_language_mode_dropdown.currentIndexChanged.connect(lambda: myConfig.setLanguageMode(tab_6_language_mode_dropdown.currentText()))
+if myConfig.language_mode:
+    tab_6_language_mode_dropdown.setCurrentText(myConfig.language_mode)
+
+#Add label to guide user to install languagepacks into ./tessdata from https://github.com/tesseract-ocr/tessdata/
+tab_6_languagepacks_label = QLabel('<h3>Install languagepacks into ./tessdata from <a href="https://github.com/tesseract-ocr/tessdata/">Github</a></h3>')
+#Add label for https://github.com/tesseract-ocr/tessdoc/blob/main/tess3/Data-Files.md
+#tab_6_languagepacks_label = QLabel('<h3>Install languagepacks into ./tessdata from <a href="https://github.com/tesseract-ocr/tessdoc/blob/main/tess3/Data-Files.md">Github</a></h3>')
+tab_6_languagepacks_label.setOpenExternalLinks(True)
+#Add label to guide about environment variables
+tab_6_env_var_label = QLabel('<h3>Set environment variables:</h3><br/><h4>Ensure you have added TESSDATA_PREFIX to point to Tesseract-OCR\\tessdata and added Tesseract-OCR\\ to your System PATH</h4>')
+
+
+tab_6_layout.addWidget(tab_6_label, 0, 0)
+tab_6_layout.addWidget(tab_6_label2, 1, 0)
+tab_6_layout.addWidget(tab_6_tesseract_label, 2, 0)
+tab_6_layout.addWidget(tab_6_tesseract_textbox, 2, 1)
+tab_6_layout.addWidget(tab_6_tesseract_button, 2, 2)
+tab_6_layout.addWidget(tab_6_status_label, 3, 0)
+tab_6_layout.addWidget(tab_6_language_mode_label, 4, 0)
+tab_6_layout.addWidget(tab_6_language_mode_dropdown, 4, 1)
+tab_6_layout.addWidget(tab_6_languagepacks_label, 5, 0)
 
 
 #Add the tabs
@@ -493,6 +575,7 @@ tabwidget.addTab(tab2, tab2_tabtext)
 tabwidget.addTab(tab3, tab3_tabtext)
 tabwidget.addTab(tab4, tab4_tabtext)
 tabwidget.addTab(tab_5, tab_5_tabtext)
+tabwidget.addTab(tab_6, tab_6_tabtext)
 
 layout.addWidget(tabwidget, 0,0)
 
